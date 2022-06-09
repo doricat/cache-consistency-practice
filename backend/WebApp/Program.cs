@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using WebApp.Hubs;
 
 namespace WebApp
 {
@@ -28,6 +29,7 @@ namespace WebApp
 
             app.UseAuthorization();
 
+            app.MapHub<SettingHub>("/setting");
             app.MapControllers();
 
             app.Run();
