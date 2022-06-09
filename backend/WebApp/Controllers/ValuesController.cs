@@ -1,5 +1,4 @@
-﻿using System;
-using System.ComponentModel.DataAnnotations;
+﻿using System.ComponentModel.DataAnnotations;
 using System.Threading.Tasks;
 using Dapper;
 using Microsoft.AspNetCore.Mvc;
@@ -29,7 +28,7 @@ namespace WebApp.Controllers
             using (var conn = new NpgsqlConnection(_configuration.GetConnectionString("pgsql")))
             {
                 await conn.OpenAsync(HttpContext.RequestAborted);
-                var entities = await conn.QueryAsync<ValueEntity>("select id, value, row_version as rowVersion from values");
+                var entities = await conn.QueryAsync<ValueEntity>("select id, value, xmin as RowVersion from values");
                 return Ok(entities);
             }
         }
@@ -55,7 +54,7 @@ namespace WebApp.Controllers
             using (var conn = new NpgsqlConnection(_configuration.GetConnectionString("pgsql")))
             {
                 await conn.OpenAsync(HttpContext.RequestAborted);
-                var entity = await conn.QueryFirstOrDefaultAsync<ValueEntity>("select id, value, row_version as rowVersion from values where id = @p0", new {p0 = id});
+                var entity = await conn.QueryFirstOrDefaultAsync<ValueEntity>("select id, value, xmin as RowVersion from values where id = @p0", new {p0 = id});
                 if (entity == null)
                 {
                     return NotFound();
@@ -73,14 +72,14 @@ namespace WebApp.Controllers
             using (var conn = new NpgsqlConnection(_configuration.GetConnectionString("pgsql")))
             {
                 await conn.OpenAsync(HttpContext.RequestAborted);
-                var entity = await conn.QueryFirstOrDefaultAsync<ValueEntity>("select id, value, row_version as rowVersion from values where id = @p0", new {p0 = id});
+                var entity = await conn.QueryFirstOrDefaultAsync<ValueEntity>("select id, value, xmin as RowVersion from values where id = @p0", new {p0 = id});
                 if (entity == null)
                 {
                     return NotFound();
                 }
 
                 entity.Value = model.Value!;
-                var i = await conn.ExecuteAsync("update values set value = @p2 where id = @p0 and row_version = @p1", new {p0 = entity.Id, p1 = entity.RowVersion, p2 = entity.Value});
+                var i = await conn.ExecuteAsync("update values set value = @p2 where id = @p0 and xmin = @p1", new {p0 = entity.Id, p1 = entity.RowVersion, p2 = entity.Value});
                 return i != 1 ? StatusCode(500) : Ok();
             }
         }
@@ -104,6 +103,6 @@ namespace WebApp.Controllers
 
         public string Value { get; set; } = string.Empty;
 
-        public DateTimeOffset RowVersion { get; set; }
+        public int RowVersion { get; set; }
     }
 }
