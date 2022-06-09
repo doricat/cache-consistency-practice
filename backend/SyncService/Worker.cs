@@ -1,4 +1,3 @@
-using System;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
@@ -29,12 +28,12 @@ namespace SyncService
             var connection = new HubConnectionBuilder()
                 .WithUrl(_configuration.GetValue<string>("HubAddress"))
                 .Build();
-
+            
             connection.On<int>("ReceiveDelay", i =>
             {
                 delay = i;
             });
-
+            
             await connection.StartAsync(stoppingToken);
 
             var options = new JsonSerializerOptions(JsonSerializerDefaults.Web);
@@ -57,7 +56,7 @@ namespace SyncService
                         var db = redis.GetDatabase();
                         if (db != null)
                         {
-                            await db.StringSetAsync(model!.Id.ToString(), JsonSerializer.Serialize(model, options));
+                            await db.StringSetAsync($"cache-consistency-practice-{model!.Id}", JsonSerializer.Serialize(model, options));
                         }
                     }
                     catch (JsonException ex)
@@ -72,7 +71,10 @@ namespace SyncService
                 _logger.LogInformation("Listen {channelName}", channelName);
                 await cmd.ExecuteNonQueryAsync(stoppingToken);
 
-                stoppingToken.WaitHandle.WaitOne();
+                while (!stoppingToken.IsCancellationRequested)
+                {
+                    await conn.WaitAsync(stoppingToken);
+                }
             }
 
             await connection.DisposeAsync();
@@ -84,5 +86,7 @@ namespace SyncService
         public int Id { get; set; }
 
         public string Value { get; set; } = string.Empty;
+
+        public int RowVersion { get; set; }
     }
 }

@@ -1,4 +1,6 @@
-﻿using System.ComponentModel.DataAnnotations;
+﻿using System.Collections.Generic;
+using System.ComponentModel.DataAnnotations;
+using System.Linq;
 using System.Threading.Tasks;
 using Dapper;
 using Microsoft.AspNetCore.Mvc;
@@ -6,6 +8,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Npgsql;
 using StackExchange.Redis;
+using WebApi.Models;
 
 namespace WebApp.Controllers
 {
@@ -28,8 +31,8 @@ namespace WebApp.Controllers
             using (var conn = new NpgsqlConnection(_configuration.GetConnectionString("pgsql")))
             {
                 await conn.OpenAsync(HttpContext.RequestAborted);
-                var entities = await conn.QueryAsync<ValueEntity>("select id, value, xmin as RowVersion from values");
-                return Ok(entities);
+                var entities = await conn.QueryAsync<ValueEntity>("select id, value, xmin as RowVersion from values order by id");
+                return Ok(new ApiResult<IList<ValueEntity>>(entities.ToList()));
             }
         }
 
@@ -43,7 +46,7 @@ namespace WebApp.Controllers
                 var db = redis.GetDatabase();
                 if (db != null)
                 {
-                    var value = await db.StringGetAsync(id.ToString());
+                    var value = await db.StringGetAsync($"cache-consistency-practice-{id}");
                     if (value.HasValue)
                     {
                         return Ok(value.ToString());

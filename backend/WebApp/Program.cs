@@ -14,6 +14,7 @@ namespace WebApp
             // Add services to the container.
 
             builder.Services.AddControllers();
+            builder.Services.AddSignalR();
             // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
             builder.Services.AddEndpointsApiExplorer();
             builder.Services.AddSwaggerGen();
@@ -27,10 +28,19 @@ namespace WebApp
                 app.UseSwaggerUI();
             }
 
+            app.UseRouting();
             app.UseAuthorization();
 
-            app.MapHub<SettingHub>("/setting");
-            app.MapControllers();
+            app.UseEndpoints(x =>
+            {
+                x.MapHub<SettingHub>("/setting");
+                x.MapControllers();
+            });
+
+            if (app.Environment.IsDevelopment())
+            {
+                app.UseSpa(x => x.UseProxyToSpaDevelopmentServer("http://localhost:3000"));
+            }
 
             app.Run();
         }
