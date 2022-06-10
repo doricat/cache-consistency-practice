@@ -41,6 +41,7 @@ namespace SyncService
             {
                 await conn.OpenAsync(stoppingToken);
                 var redis = await ConnectionMultiplexer.ConnectAsync(_configuration.GetConnectionString("redis"));
+                var db = redis.GetDatabase();
                 conn.Notification += async (_, e) =>
                 {
                     if (delay > 0)
@@ -53,7 +54,6 @@ namespace SyncService
                     try
                     {
                         var model = JsonSerializer.Deserialize<NotificationModel>(e.Payload, options);
-                        var db = redis.GetDatabase();
                         if (db != null)
                         {
                             await db.StringSetAsync($"cache-consistency-practice-{model!.Id}", JsonSerializer.Serialize(model, options));

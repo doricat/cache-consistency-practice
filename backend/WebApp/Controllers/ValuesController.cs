@@ -63,7 +63,7 @@ namespace WebApp.Controllers
                     return NotFound();
                 }
 
-                return Ok(entity);
+                return Ok(new ApiResult<ValueEntity>(entity));
             }
         }
 
@@ -83,7 +83,7 @@ namespace WebApp.Controllers
 
                 entity.Value = model.Value!;
                 var i = await conn.ExecuteAsync("update values set value = @p2 where id = @p0 and xmin = @p1", new {p0 = entity.Id, p1 = entity.RowVersion, p2 = entity.Value});
-                return i != 1 ? StatusCode(500) : Ok();
+                return i != 1 ? StatusCode(500) : NoContent();
             }
         }
     }
@@ -91,7 +91,7 @@ namespace WebApp.Controllers
     public class ValueUpdateModel
     {
         [Required]
-        [StringLength(32)]
+        [StringLength(50)]
         public string? Value { get; set; }
 
         public override string ToString()
