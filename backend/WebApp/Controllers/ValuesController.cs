@@ -1,14 +1,17 @@
 ﻿using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.Linq;
+using System.Text.Json;
 using System.Threading.Tasks;
 using Dapper;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.SignalR;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Npgsql;
 using StackExchange.Redis;
 using WebApi.Models;
+using WebApp.Hubs;
 
 namespace WebApp.Controllers
 {
@@ -18,11 +21,15 @@ namespace WebApp.Controllers
     {
         private readonly ILogger<ValuesController> _logger;
         private readonly IConfiguration _configuration;
+        private readonly IHubContext<SettingHub, ISettingHub> _hubContext;
 
-        public ValuesController(ILogger<ValuesController> logger, IConfiguration configuration)
+        public ValuesController(ILogger<ValuesController> logger, 
+            IConfiguration configuration, 
+            IHubContext<SettingHub, ISettingHub> hubContext)
         {
             _logger = logger;
             _configuration = configuration;
+            _hubContext = hubContext;
         }
 
         [HttpGet]
@@ -49,7 +56,8 @@ namespace WebApp.Controllers
                     var value = await db.StringGetAsync($"cache-consistency-practice-{id}");
                     if (value.HasValue)
                     {
-                        return Ok(value.ToString());
+                        var entity = JsonSerializer.Deserialize<ValueEntity>(value.ToString(), new JsonSerializerOptions(JsonSerializerDefaults.Web));
+                        return Ok(new ApiResult<ValueEntity>(entity!));
                     }
                 }
             }
@@ -71,6 +79,8 @@ namespace WebApp.Controllers
         public async Task<IActionResult> Put([FromRoute] int id, [FromBody] ValueUpdateModel model)
         {
             _logger.LogInformation("Put: id={id}, model={model}", id, model);
+
+            await _hubContext.Clients.All.ReceiveDelay(model.Delay);
 
             using (var conn = new NpgsqlConnection(_configuration.GetConnectionString("pgsql")))
             {
@@ -94,9 +104,11 @@ namespace WebApp.Controllers
         [StringLength(50)]
         public string? Value { get; set; }
 
+        public int Delay { get; set; }
+
         public override string ToString()
         {
-            return $"Value={Value}";
+            return $"{{Value={Value}, Delay={Delay}}}";
         }
     }
 

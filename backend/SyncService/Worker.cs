@@ -46,7 +46,7 @@ namespace SyncService
                 {
                     if (delay > 0)
                     {
-                        await Task.Delay(delay, stoppingToken);
+                        await Task.Delay(delay * 1000, stoppingToken);
                     }
 
                     _logger.LogInformation("Received notification {payload}", e.Payload);
